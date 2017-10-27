@@ -7,6 +7,7 @@
 #include "util.h"
 
 #define PACKET_WORDS 180
+#define TOTAL_PACKETS 10
 
 uint64_t in_packet[PACKET_WORDS];
 uint64_t out_packet[3];
@@ -18,7 +19,7 @@ int main(void)
 	uint64_t dstmac, srcmac;
 	uint16_t ethtype;
 
-	for (;;) {
+	for (int i = 0; i < TOTAL_PACKETS; i++) {
 		len = nic_recv(in_packet);
 		dstmac = in_packet[0] >> 16;
 		srcmac = in_packet[1] & ((1 << 48) - 1);
