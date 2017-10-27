@@ -5,6 +5,7 @@
 
 #include "mmio.h"
 #include "nic.h"
+#include "util.h"
 
 #define PACKET_WINDOW 10
 #define PACKET_WORDS 180
@@ -14,13 +15,13 @@ uint64_t in_packets[PACKET_WINDOW][3];
 char inflight[PACKET_WINDOW];
 uint16_t checksums[PACKET_WINDOW];
 
-static unsigned long rdcycle(void)
-{
-	unsigned long cycles;
-
-	asm volatile ("rdcycle %[cycles]" : [cycles] "=r" (cycles));
-	return cycles;
-}
+//static unsigned long rdcycle(void)
+//{
+//	unsigned long cycles;
+//
+//	asm volatile ("rdcycle %[cycles]" : [cycles] "=r" (cycles));
+//	return cycles;
+//}
 
 static void fill_packet(
 	uint64_t *packet, uint64_t srcmac, uint64_t dstmac, int id)
@@ -73,19 +74,6 @@ void complete_recvs(void)
 	}
 }
 
-int verify_checksum(uint16_t *data, int n, uint16_t cksum)
-{
-	uint32_t sum = cksum;
-
-	for (int i = 0; i < n; i++)
-		sum += data[i];
-
-	while ((sum >> 16) != 0)
-		sum = (sum & 0xffff) + (sum >> 16);
-
-	return ~sum & 0xffff;
-}
-
 int main(void)
 {
 	uint64_t srcmac = nic_macaddr();
@@ -122,7 +110,7 @@ int main(void)
 		int cksum;
 		if (inflight[i])
 			printf("Packet %d was never acked\n", i);
-		cksum = verify_checksum(
+		cksum = compute_checksum(
 				(uint16_t *) out_packets[i],
 				PACKET_WORDS * 4,
 				checksums[i]);

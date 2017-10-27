@@ -3,7 +3,7 @@ OBJDUMP=riscv64-unknown-elf-objdump
 CFLAGS=-mcmodel=medany -std=gnu99 -O2 -fno-common -fno-builtin-printf -Wall
 LDFLAGS=-static -nostdlib -nostartfiles -lgcc
 
-PROGRAMS = bandwidth-test
+PROGRAMS = bw-test-client bw-test-server
 
 default: $(addsuffix .riscv,$(PROGRAMS))
 

@@ -117,6 +117,19 @@ static uint64_t lfsr(uint64_t x)
   return (x >> 1) | (bit << 62);
 }
 
+static uint16_t compute_checksum(uint16_t *data, int n, uint16_t init)
+{
+	uint32_t sum = init;
+
+	for (int i = 0; i < n; i++)
+		sum += data[i];
+
+	while ((sum >> 16) != 0)
+		sum = (sum & 0xffff) + (sum >> 16);
+
+	return ~sum & 0xffff;
+}
+
 #ifdef __riscv
 #include "encoding.h"
 #endif
