@@ -7,15 +7,14 @@
 #include "nic.h"
 #include "util.h"
 
-#define PACKET_WINDOW 10
+#define NPACKETS 100
 #define PACKET_WORDS 180
-#define NREPEATS 10
 
-uint64_t out_packets[PACKET_WINDOW][PACKET_WORDS];
+uint64_t out_packets[NPACKETS][PACKET_WORDS];
 uint64_t in_packet[3];
-
-int sent_counts[PACKET_WINDOW];
-int total_sent = 0;
+char completed[NPACKETS];
+int total_comp = 0;
+int total_req = 0;
 
 static void fill_packet(
 	uint64_t *packet, uint64_t srcmac, uint64_t dstmac, int id)
@@ -36,21 +35,26 @@ static inline void post_send(uint64_t addr, uint64_t len)
 
 static void process_loop(void)
 {
-    uint16_t send_comp;
-    static int send_id = 0;
+	uint16_t counts, send_req, send_comp;
+	static int req_id = 0;
+	static int comp_id = 0;
 
-    send_comp = nic_send_comp_avail();
+	counts = reg_read16(SIMPLENIC_COUNTS);
+	send_req  = counts & 0xf;
+	send_comp = (counts >> 8)  & 0xf;
 
-    for (int i = 0; i < send_comp; i++) {
-        reg_read16(SIMPLENIC_SEND_COMP);
-        sent_counts[send_id]++;
-        total_sent++;
+	for (int i = 0; i < send_req && total_req < NPACKETS; i++) {
+		post_send((uint64_t) out_packets[req_id], PACKET_WORDS * 8);
+		req_id++;
+		total_req++;
+	}
 
-        if (sent_counts[send_id] < NREPEATS)
-                post_send((uint64_t) out_packets[send_id], PACKET_WORDS * 8);
-
-        send_id = (send_id + 1) % PACKET_WINDOW;
-    }
+	for (int i = 0; i < send_comp && total_comp < NPACKETS; i++) {
+		reg_read16(SIMPLENIC_SEND_COMP);
+		completed[comp_id] = 1;
+		comp_id++;
+		total_comp++;
+	}
 }
 
 int main(void)
@@ -62,9 +66,9 @@ int main(void)
 	srandom(0xCFF32987);
 
         memset(in_packet, 0, sizeof(uint64_t) * 3);
-	for (int i = 0; i < PACKET_WINDOW; i++) {
+	memset(completed, 0, NPACKETS);
+	for (int i = 0; i < NPACKETS; i++) {
 		fill_packet(out_packets[i], srcmac, dstmac, i);
-                sent_counts[i] = 0;
 	}
 
 	asm volatile ("fence");
@@ -75,13 +79,7 @@ int main(void)
 
         reg_write64(SIMPLENIC_RECV_REQ, (uint64_t) in_packet);
 
-	for (int i = 0; i < PACKET_WINDOW; i++) {
-		post_send(
-			(uint64_t) out_packets[i],
-			PACKET_WORDS * sizeof(uint64_t));
-	}
-
-        while (total_sent < NREPEATS * PACKET_WINDOW)
+        while (total_comp < NPACKETS)
             process_loop();
 
         while (nic_recv_comp_avail() == 0) {}
@@ -89,10 +87,9 @@ int main(void)
 
 	end = rdcycle();
 
-	for (int i = 0; i < PACKET_WINDOW; i++) {
-		if (sent_counts[i] < NREPEATS)
-			printf("Packet %d was only acked %d times\n",
-                                i, sent_counts[i]);
+	for (int i = 0; i < NPACKETS; i++) {
+		if (!completed[i])
+			printf("Packet %d was not sent\n", i);
 	}
 
 	printf("Send/Recv took %lu cycles\n", end - start);

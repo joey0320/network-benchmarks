@@ -7,15 +7,13 @@
 #include "util.h"
 
 #define PACKET_WORDS 180
-#define PACKET_WINDOW 10
-#define NREPEATS 10
-#define TOTAL_PACKETS (NREPEATS * PACKET_WINDOW)
+#define NPACKETS 100
 
-uint64_t in_packets[PACKET_WINDOW][PACKET_WORDS];
+uint64_t in_packets[NPACKETS][PACKET_WORDS];
 uint64_t out_packet[3];
-int recv_counts[PACKET_WINDOW];
-int send_counts[PACKET_WINDOW];
-int total_recv = 0;
+char completed[NPACKETS];
+int total_req = 0;
+int total_comp = 0;
 
 static inline void post_send(uint64_t addr, uint64_t len)
 {
@@ -23,34 +21,32 @@ static inline void post_send(uint64_t addr, uint64_t len)
 	reg_write64(SIMPLENIC_SEND_REQ, request);
 }
 
-static inline void process_recv(int recv_id)
-{
-        int len, send_id;
-
-        len = reg_read16(SIMPLENIC_RECV_COMP);
-        if (len < 24) {
-                printf("Packet too small\n");
-                abort();
-        }
-        recv_counts[recv_id]++;
-        total_recv++;
-        send_id = in_packets[recv_id][2];
-        send_counts[send_id]++;
-
-        if (recv_counts[recv_id] < NREPEATS)
-                reg_write64(SIMPLENIC_RECV_REQ, (uint64_t) in_packets[recv_id]);
-}
-
 static inline void process_loop(void)
 {
-        uint16_t recv_comp;
-        static int recv_id = 0;
+        uint16_t counts, recv_req, recv_comp;
+        static int req_id = 0, comp_id = 0, send_id;
+	int len;
 
-        recv_comp = nic_recv_comp_avail();
+	counts = reg_read16(SIMPLENIC_COUNTS);
+	recv_req  = (counts >> 4) & 0xf;
+        recv_comp = (counts >> 12) & 0xf;
 
-        for (int i = 0; i < recv_comp; i++) {
-                process_recv(recv_id);
-                recv_id = (recv_id + 1) % PACKET_WINDOW;
+	for (int i = 0; i < recv_req && total_req < NPACKETS; i++) {
+		reg_write64(SIMPLENIC_RECV_REQ, (uint64_t) in_packets[req_id]);
+		req_id++;
+		total_req++;
+	}
+
+        for (int i = 0; i < recv_comp && total_comp < NPACKETS; i++) {
+		len = reg_read16(SIMPLENIC_RECV_COMP);
+		if (len < 24) {
+			printf("Packet too smal\n");
+			abort();
+		}
+		send_id = in_packets[comp_id][2];
+		completed[send_id] = 1;
+		comp_id++;
+		total_comp++;
         }
 }
 
@@ -65,24 +61,16 @@ int main(void)
         out_packet[1] = srcmac | (0x1008L << 48);
         out_packet[2] = 0;
 
-        for (int i = 0; i < PACKET_WINDOW; i++) {
-                recv_counts[i] = 0;
-                send_counts[i] = 0;
-                reg_write64(SIMPLENIC_RECV_REQ, (uint64_t) in_packets[i]);
-        }
+	memset(completed, 0, NPACKETS);
 
-        while (total_recv < TOTAL_PACKETS)
+        while (total_comp < NPACKETS)
                 process_loop();
 
         nic_send(out_packet, 24);
 
-        for (int i = 0; i < PACKET_WINDOW; i++) {
-                if (recv_counts[i] < NREPEATS)
-                        printf("Only received to %d %d times\n",
-                                        i, recv_counts[i]);
-                if (send_counts[i] < NREPEATS)
-                        printf("Only received send id %d %d times\n",
-                                        i, send_counts[i]);
+        for (int i = 0; i < NPACKETS; i++) {
+		if (!completed[i])
+			printf("Did not receive packet %d\n", i);
         }
 
         return 0;
