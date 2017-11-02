@@ -11,9 +11,29 @@
 
 uint64_t in_packets[NPACKETS][PACKET_WORDS];
 uint64_t out_packet[3];
+uint64_t expected_packets[NPACKETS][PACKET_WORDS];
 char completed[NPACKETS];
+int recvid2sendid[NPACKETS];
 int total_req = 0;
 int total_comp = 0;
+
+static inline void fill_packets(uint64_t *packets)
+{
+	for (int i = 3; i < PACKET_WORDS; i++)
+		packets[i] = random();
+}
+
+static inline void check_data(int recv_id)
+{
+	int send_id = recvid2sendid[recv_id];
+
+	for (int i = 3; i < PACKET_WORDS; i++) {
+		if (in_packets[recv_id][i] != expected_packets[send_id][i]) {
+			printf("Data mismatch in packet %d\n", send_id);
+			abort();
+		}
+	}
+}
 
 static inline void post_send(uint64_t addr, uint64_t len)
 {
@@ -45,6 +65,7 @@ static inline void process_loop(void)
 		}
 		send_id = in_packets[comp_id][2];
 		completed[send_id] = 1;
+		recvid2sendid[comp_id] = send_id;
 		comp_id++;
 		total_comp++;
         }
@@ -63,15 +84,27 @@ int main(void)
 
 	memset(completed, 0, NPACKETS);
 
+	srandom(0xCFF32987);
+
+	for (int i = 0; i < NPACKETS; i++)
+		fill_packets(expected_packets[i]);
+
         while (total_comp < NPACKETS)
                 process_loop();
 
         nic_send(out_packet, 24);
 
+	printf("Finished sending data\n");
+
         for (int i = 0; i < NPACKETS; i++) {
 		if (!completed[i])
 			printf("Did not receive packet %d\n", i);
+		check_data(i);
         }
+
+	printf("All data correct.\n");
+
+	nic_send(out_packet, 24);
 
         return 0;
 }

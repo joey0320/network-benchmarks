@@ -82,8 +82,7 @@ int main(void)
         while (total_comp < NPACKETS)
             process_loop();
 
-        while (nic_recv_comp_avail() == 0) {}
-        reg_read16(SIMPLENIC_RECV_COMP);
+	nic_recv(in_packet);
 
 	end = rdcycle();
 
@@ -93,6 +92,8 @@ int main(void)
 	}
 
 	printf("Send/Recv took %lu cycles\n", end - start);
+
+	nic_recv(in_packet);
 
 	return 0;
 }
