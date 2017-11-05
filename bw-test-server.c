@@ -45,6 +45,7 @@ static inline void process_loop(void)
 {
         uint16_t counts, recv_req, recv_comp;
         static int req_id = 0, comp_id = 0, send_id;
+	static int time_count = 0;
 	int len;
 
 	counts = reg_read16(SIMPLENIC_COUNTS);
@@ -69,6 +70,11 @@ static inline void process_loop(void)
 		comp_id++;
 		total_comp++;
         }
+
+	time_count++;
+	if (time_count == 100) {
+		printf("Processing\n");
+	}
 }
 
 int main(void)
@@ -76,7 +82,7 @@ int main(void)
         uint64_t srcmac, dstmac;
 
         srcmac = nic_macaddr();
-        dstmac = srcmac - (1L << 40);
+        dstmac = CLIENT_MACADDR;
 
         out_packet[0] = dstmac << 16;
         out_packet[1] = srcmac | (0x1008L << 48);

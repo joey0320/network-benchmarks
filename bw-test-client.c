@@ -60,7 +60,7 @@ static void process_loop(void)
 int main(void)
 {
 	uint64_t srcmac = nic_macaddr();
-	uint64_t dstmac = srcmac + (1L << 40);
+	uint64_t dstmac = SERVER_MACADDR;
 	uint64_t start = 0, end = 0;
 
 	srandom(0xCFF32987);
