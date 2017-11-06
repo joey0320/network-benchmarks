@@ -19,8 +19,8 @@ def link(source_names, target_name):
 def mac_to_hex(macaddr):
     return '0x' + ''.join(reversed(macaddr.split(":")))
 
-SERVER_MACS = ["00:12:6D:00:01:{:02d}".format(i) for i in range(3, 10, 2)]
-CLIENT_MACS = ["00:12:6D:00:01:{:02d}".format(i) for i in range(2, 10, 2)]
+SERVER_MACS = ["00:12:6D:00:00:{:02x}".format(i) for i in range(10, 18)]
+CLIENT_MACS = ["00:12:6D:00:00:{:02x}".format(i) for i in range(2, 10)]
 
 def main():
     if not os.path.isdir("testbuild"):
@@ -30,8 +30,8 @@ def main():
     compile("syscalls.c", "testbuild/syscalls.o", {})
 
     for (i, (server_mac, client_mac)) in enumerate(zip(SERVER_MACS, CLIENT_MACS)):
-        SERVER_BASE = "testbuild/bw-test-server-{}".format(2 * i + 1)
-        CLIENT_BASE = "testbuild/bw-test-client-{}".format(2 * i)
+        SERVER_BASE = "testbuild/bw-test-server-{}".format(i + len(CLIENT_MACS))
+        CLIENT_BASE = "testbuild/bw-test-client-{}".format(i)
         compile(
             "bw-test-server.c",
             SERVER_BASE + ".o",
