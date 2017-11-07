@@ -21,6 +21,8 @@ def mac_to_hex(macaddr):
 
 SERVER_MACS = ["00:12:6D:00:00:{:02x}".format(i) for i in range(10, 18)]
 CLIENT_MACS = ["00:12:6D:00:00:{:02x}".format(i) for i in range(2, 10)]
+NPACKETS = 5000
+PACKET_WORDS = 180
 
 def main():
     if not os.path.isdir("testbuild"):
@@ -35,11 +37,15 @@ def main():
         compile(
             "bw-test-server.c",
             SERVER_BASE + ".o",
-            {"CLIENT_MACADDR": mac_to_hex(client_mac)})
+            {"CLIENT_MACADDR": mac_to_hex(client_mac),
+             "NPACKETS": NPACKETS,
+             "PACKET_WORDS": PACKET_WORDS})
         compile(
             "bw-test-client.c",
             CLIENT_BASE + ".o",
-            {"SERVER_MACADDR": mac_to_hex(server_mac)})
+            {"SERVER_MACADDR": mac_to_hex(server_mac),
+             "NPACKETS": NPACKETS,
+             "PACKET_WORDS": PACKET_WORDS})
         link([SERVER_BASE + ".o", "testbuild/crt.o", "testbuild/syscalls.o"], SERVER_BASE + ".riscv")
         link([CLIENT_BASE + ".o", "testbuild/crt.o", "testbuild/syscalls.o"], CLIENT_BASE + ".riscv")
 

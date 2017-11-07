@@ -7,9 +7,6 @@
 #include "nic.h"
 #include "util.h"
 
-#define NPACKETS 100
-#define PACKET_WORDS 180
-
 uint64_t out_packets[NPACKETS][PACKET_WORDS];
 uint64_t in_packet[3];
 char completed[NPACKETS];

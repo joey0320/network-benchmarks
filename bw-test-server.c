@@ -6,9 +6,6 @@
 #include "nic.h"
 #include "util.h"
 
-#define PACKET_WORDS 180
-#define NPACKETS 100
-
 uint64_t in_packets[NPACKETS][PACKET_WORDS];
 uint64_t out_packet[3];
 uint64_t expected_packets[NPACKETS][PACKET_WORDS];
