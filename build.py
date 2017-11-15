@@ -60,5 +60,11 @@ def main():
         link([SERVER_BASE + ".o", "testbuild/crt.o", "testbuild/syscalls.o"], SERVER_BASE + ".riscv")
         link([CLIENT_BASE + ".o", "testbuild/crt.o", "testbuild/syscalls.o"], CLIENT_BASE + ".riscv")
 
+    compile("latency-test.c", "testbuild/latency-test.o", {})
+    link(["testbuild/latency-test.o",
+          "testbuild/crt.o",
+          "testbuild/syscalls.o"],
+          "testbuild/latency-test.riscv")
+
 if __name__ == "__main__":
     main()
