@@ -1,60 +1,43 @@
-#define SIMPLENIC_BASE 0x10016000L
-#define SIMPLENIC_SEND_REQ (SIMPLENIC_BASE + 0)
-#define SIMPLENIC_RECV_REQ (SIMPLENIC_BASE + 8)
-#define SIMPLENIC_SEND_COMP (SIMPLENIC_BASE + 16)
-#define SIMPLENIC_RECV_COMP (SIMPLENIC_BASE + 18)
-#define SIMPLENIC_COUNTS (SIMPLENIC_BASE + 20)
-#define SIMPLENIC_MACADDR (SIMPLENIC_BASE + 24)
+#define NIC_BASE 0x10016000L
+#define NIC_SEND_REQ (NIC_BASE + 0)
+#define NIC_RECV_REQ (NIC_BASE + 8)
+#define NIC_SEND_COMP (NIC_BASE + 16)
+#define NIC_RECV_COMP (NIC_BASE + 18)
+#define NIC_COUNTS (NIC_BASE + 20)
+#define NIC_MACADDR (NIC_BASE + 24)
 
-static inline int nic_send_req_avail(void)
+#define NIC_COUNT_SEND_REQ 0
+#define NIC_COUNT_RECV_REQ 4
+#define NIC_COUNT_SEND_COMP 8
+#define NIC_COUNT_RECV_COMP 12
+
+static inline uint16_t nic_counts(void)
 {
-	return reg_read16(SIMPLENIC_COUNTS) & 0xf;
+	return reg_read16(NIC_COUNTS);
 }
 
-static inline int nic_recv_req_avail(void)
+static inline void nic_post_send(uint64_t addr, uint64_t len)
 {
-	return (reg_read16(SIMPLENIC_COUNTS) >> 4) & 0xf;
+	uint64_t request = ((len & 0x7fff) << 48) | (addr & 0xffffffffffffL);
+	reg_write64(NIC_SEND_REQ, request);
 }
 
-static inline int nic_send_comp_avail(void)
+static inline void nic_complete_send(void)
 {
-	return (reg_read16(SIMPLENIC_COUNTS) >> 8) & 0xf;
+	reg_read16(NIC_SEND_COMP);
 }
 
-static inline int nic_recv_comp_avail(void)
+static inline void nic_post_recv(uint64_t addr)
 {
-	return (reg_read16(SIMPLENIC_COUNTS) >> 12) & 0xf;
+	reg_write64(NIC_RECV_REQ, addr);
 }
 
-static void nic_send(void *data, unsigned long len)
+static inline uint16_t nic_complete_recv(void)
 {
-	uintptr_t addr = ((uintptr_t) data) & ((1L << 48) - 1);
-	unsigned long packet = (len << 48) | addr;
-
-	while (nic_send_req_avail() == 0);
-	reg_write64(SIMPLENIC_SEND_REQ, packet);
-
-	while (nic_send_comp_avail() == 0);
-	reg_read16(SIMPLENIC_SEND_COMP);
-}
-
-static int nic_recv(void *dest)
-{
-	uintptr_t addr = (uintptr_t) dest;
-	int len;
-
-	while (nic_recv_req_avail() == 0);
-	reg_write64(SIMPLENIC_RECV_REQ, addr);
-
-	// Poll for completion
-	while (nic_recv_comp_avail() == 0);
-	len = reg_read16(SIMPLENIC_RECV_COMP);
-	asm volatile ("fence");
-
-	return len;
+	return reg_read16(NIC_RECV_COMP);
 }
 
 static inline uint64_t nic_macaddr(void)
 {
-	return reg_read64(SIMPLENIC_MACADDR);
+	return reg_read64(NIC_MACADDR);
 }
