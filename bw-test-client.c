@@ -24,12 +24,13 @@ static void fill_packet(
 
 static void process_loop(void)
 {
-	uint16_t counts, send_req, send_comp;
+	uint32_t counts, send_req, send_comp;
 	static int req_id = 0, comp_id = 0;
+	int last_comp, last_req;
 
 	counts = nic_counts();
-	send_req  = (counts >> NIC_COUNT_SEND_REQ)  & 0xf;
-	send_comp = (counts >> NIC_COUNT_SEND_COMP) & 0xf;
+	send_req  = (counts >> NIC_COUNT_SEND_REQ)  & 0xff;
+	send_comp = (counts >> NIC_COUNT_SEND_COMP) & 0xff;
 
 	for (int i = 0; i < send_comp; i++) {
 		nic_complete_send();
@@ -51,7 +52,7 @@ static void process_loop(void)
 static void finish_comp(void)
 {
 	int counts = nic_counts();
-	int comp = (counts >> NIC_COUNT_SEND_COMP) & 0xf;
+	int comp = (counts >> NIC_COUNT_SEND_COMP) & 0xff;
 
 	for (int i = 0; i < comp; i++) {
 		nic_complete_send();
