@@ -1,5 +1,7 @@
+import argparse
 import subprocess
 import os
+import shutil
 
 CC=["riscv64-unknown-elf-gcc"]
 CFLAGS=["-mcmodel=medany", "-Wall", "-O2", "-fno-common", "-fno-builtin-printf"]
@@ -22,41 +24,55 @@ def mac_to_hex(macaddr):
 def ltoa(i):
     return str(i) + "L"
 
-SERVER_MACS = ["00:12:6D:00:00:{:02x}".format(i) for i in range(10, 18)]
-CLIENT_MACS = ["00:12:6D:00:00:{:02x}".format(i) for i in range(2, 10)]
-NPACKETS = 100
-PACKET_WORDS = 180
-END_CYCLE = 800 * 1000 * 1000
-CYCLE_STEP = END_CYCLE / len(CLIENT_MACS)
-SERVER_WAIT = 6 * CYCLE_STEP
-CLIENT_WAIT = SERVER_WAIT + 2 * CYCLE_STEP
+MAC_TEMPLATE = "00:12:6D:00:00:{:02x}"
 
 def main():
-    if not os.path.isdir("testbuild"):
-        os.makedirs("testbuild")
+    if os.path.isdir("testbuild"):
+        shutil.rmtree("testbuild")
+    os.makedirs("testbuild")
+
+    parser = argparse.ArgumentParser(description="Build client and server binaries")
+    parser.add_argument(
+            "-n", "--num-pairs", type=int, default=8)
+    parser.add_argument(
+            "-c", "--num-packets", type=int, default=100)
+    parser.add_argument(
+            "-w", "--packet-words", type=int, default=180)
+    parser.add_argument(
+            "-s", "--cycle-step", type=int, default=100000000)
+    args = parser.parse_args()
+
+    all_macs = [MAC_TEMPLATE.format(i) for i in range(2, 2 + 2 * args.num_pairs)]
+    server_macs = all_macs[args.num_pairs:]
+    client_macs = all_macs[:args.num_pairs]
 
     compile("crt.S", "testbuild/crt.o", {})
     compile("syscalls.c", "testbuild/syscalls.o", {})
 
-    for (i, (server_mac, client_mac)) in enumerate(zip(SERVER_MACS, CLIENT_MACS)):
-        SERVER_BASE = "testbuild/bw-test-server-{}".format(i + len(CLIENT_MACS))
+    end_cycle = args.num_pairs * args.cycle_step
+    server_wait = args.num_pairs * args.cycle_step
+    client_wait = server_wait + 2 * args.cycle_step
+
+    for (i, (server_mac, client_mac)) in enumerate(zip(server_macs, client_macs)):
+        SERVER_BASE = "testbuild/bw-test-server-{}".format(i + args.num_pairs)
         CLIENT_BASE = "testbuild/bw-test-client-{}".format(i)
         compile(
             "bw-test-server.c",
             SERVER_BASE + ".o",
             {"CLIENT_MACADDR": mac_to_hex(client_mac),
-             "NPACKETS": NPACKETS,
-             "PACKET_WORDS": PACKET_WORDS,
-             "END_CYCLE": ltoa(END_CYCLE + SERVER_WAIT)})
+             "NPACKETS": args.num_packets,
+             "PACKET_WORDS": args.packet_words,
+             "END_CYCLE": ltoa(end_cycle + server_wait)})
         compile(
             "bw-test-client.c",
             CLIENT_BASE + ".o",
             {"SERVER_MACADDR": mac_to_hex(server_mac),
-             "NPACKETS": NPACKETS,
-             "PACKET_WORDS": PACKET_WORDS,
-             "START_CYCLE": ltoa(i * CYCLE_STEP),
-             "END_CYCLE": ltoa(END_CYCLE),
-             "WAIT_CYCLES": ltoa(CLIENT_WAIT)})
+             "NPACKETS": args.num_packets,
+             "PACKET_WORDS": args.packet_words,
+             "START_CYCLE": ltoa(i * args.cycle_step),
+             "END_CYCLE": ltoa(end_cycle),
+             "WAIT_CYCLES": ltoa(client_wait)})
+
         link([SERVER_BASE + ".o", "testbuild/crt.o", "testbuild/syscalls.o"], SERVER_BASE + ".riscv")
         link([CLIENT_BASE + ".o", "testbuild/crt.o", "testbuild/syscalls.o"], CLIENT_BASE + ".riscv")
 
