@@ -49,7 +49,7 @@ def main():
     compile("crt.S", "testbuild/crt.o", {})
     compile("syscalls.c", "testbuild/syscalls.o", {})
 
-    end_cycle = args.num_pairs * args.cycle_step
+    end_cycle = (args.num_pairs + 1) * args.cycle_step
     server_wait = args.num_pairs * args.cycle_step
     client_wait = server_wait + 2 * args.cycle_step
 
@@ -69,7 +69,7 @@ def main():
             {"SERVER_MACADDR": mac_to_hex(server_mac),
              "NPACKETS": args.num_packets,
              "PACKET_WORDS": args.packet_words,
-             "START_CYCLE": ltoa(i * args.cycle_step),
+             "START_CYCLE": ltoa((i + 1) * args.cycle_step),
              "END_CYCLE": ltoa(end_cycle),
              "WAIT_CYCLES": ltoa(client_wait)})
 
