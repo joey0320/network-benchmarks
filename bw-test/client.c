@@ -26,7 +26,6 @@ static void process_loop(void)
 {
 	uint32_t counts, send_req, send_comp;
 	static int req_id = 0, comp_id = 0;
-	int last_comp, last_req;
 
 	counts = nic_counts();
 	send_req  = (counts >> NIC_COUNT_SEND_REQ)  & 0xff;
