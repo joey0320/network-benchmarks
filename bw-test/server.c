@@ -13,13 +13,13 @@ char inflight[NPACKETS];
 
 static inline void process_loop(void)
 {
-        uint16_t counts, recv_req, recv_comp;
+        uint32_t counts, recv_req, recv_comp;
         static int req_id = 0, comp_id = 0;
 	int len;
 
 	counts = nic_counts();
-	recv_req  = (counts >> NIC_COUNT_RECV_REQ)  & 0xf;
-        recv_comp = (counts >> NIC_COUNT_RECV_COMP) & 0xf;
+	recv_req  = (counts >> NIC_COUNT_RECV_REQ)  & 0xff;
+        recv_comp = (counts >> NIC_COUNT_RECV_COMP) & 0xff;
 
         for (int i = 0; i < recv_comp; i++) {
 		len = nic_complete_recv();
