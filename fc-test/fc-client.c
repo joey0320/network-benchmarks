@@ -83,7 +83,7 @@ static void recv_ack(void)
 	while ((nic_counts() >> NIC_COUNT_RECV_COMP) == 0) {}
 	len = nic_complete_recv();
 
-	if (len != 3)
+	if (len != 24)
 		printf("Error: incorrect acknowledgement length %d\n", len);
 
 	asm volatile ("fence");
@@ -104,6 +104,8 @@ int main(void)
 
 	send_packets();
 	recv_ack();
+
+	printf("All packets acknowledged\n");
 
 	return 0;
 }

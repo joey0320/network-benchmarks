@@ -86,5 +86,9 @@ int main(void)
 	dstmac = check_packets();
 	send_ack(dstmac, srcmac);
 
+	printf("Received all packets\n");
+
+	for (;;) {}
+
 	return 0;
 }
