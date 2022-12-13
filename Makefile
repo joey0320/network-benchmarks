@@ -1,0 +1,28 @@
+RISCV_PFX=riscv64-unknown-elf-
+RISCV_GCC=$(RISCV_PFX)g++
+RISCV_OBJDUMP=$(RISCV_PFX)objdump
+
+OBJECT_OPT=-fno-common -fno-builtin-printf -specs=htif_nano.specs
+# BINARY_OPT=-static -specs=htif_nano.specs -DDEBUG
+BINARY_OPT=-static -specs=htif_nano.specs
+OBJECT_DUMP_OPT=--disassemble-all
+
+TARGET_LATENCY_TEST=latency-test
+TARGET_LATENCY_TEST_RISCV=$(TARGET_LATENCY_TEST).riscv
+TARGET_LATENCY_TEST_OBJDUMP=$(TARGET_LATENCY_TEST).riscv.dump
+
+JUNK += $(TARGET_LATENCY_TEST_RISCV) $(TARGET_LATENCY_TEST_OBJDUMP)
+
+INCLUDE_DIRS += "common"
+
+all: $(TARGET_LATENCY_TEST_RISCV) $(TARGET_LATENCY_TEST_OBJDUMP)
+
+$(TARGET_LATENCY_TEST_RISCV): latency-test.c
+	$(RISCV_GCC) $(BINARY_OPT) -I$(INCLUDE_DIRS) -o $@ $^
+
+$(TARGET_LATENCY_TEST_OBJDUMP): $(TARGET_LATENCY_TEST_RISCV)
+	$(RISCV_OBJDUMP) $(OBJECT_DUMP_OPT) $< > $@
+
+.PHONY: clean
+clean:
+	rm -f $(JUNK)
